@@ -1,21 +1,14 @@
-# --- API ---
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.3.1          # wheel CPU estable y liviana
+transformers==4.46.3
+tokenizers==0.20.1    # wheel precompilada (evita compilar Rust)
+safetensors==0.4.5
+huggingface_hub==0.24.6
+
 fastapi==0.115.2
 uvicorn[standard]==0.30.6
-
-# --- ML / HF ---
-transformers==4.46.3
-safetensors>=0.4.5
-huggingface_hub>=0.24.0
-
-# Torch: CPU por defecto desde PyPI (elige la wheel adecuada para tu SO)
-# Si vas a usar GPU/CUDA, instalá la wheel específica de CUDA según PyTorch.org
-torch>=2.2.0
-
-# --- Utilidades ---
-python-dotenv>=1.0.1
-pydantic>=2.7.0
-
-# --- Tests / Dev (opcionales) ---
-httpx>=0.27.0
-pytest>=8.2.0
-pytest-asyncio>=0.23.8
+pydantic==2.7.4
+python-dotenv==1.0.1
+httpx==0.28.1         # si lo usás
+pytest==8.4.2
+pytest-asyncio==1.2.0
