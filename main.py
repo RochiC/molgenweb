@@ -63,7 +63,7 @@ def postprocesar_smiles(tokens_string: str) -> str:
                 result.append("(")
                 branch_stack.append(")")
 
-            elif tok.startswith("Ring"):
+            elif tok.startswith("[Ring"):
                 nums = re.findall(r'\d+', tok)
                 if nums:
                     n = nums[0]
@@ -132,3 +132,4 @@ def generate(req: GenerateRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generando SMILES: {str(e)}")
+
