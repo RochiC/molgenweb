@@ -2,6 +2,12 @@ import gradio as gr
 import torch
 import main as core  # importa tu main.py
 
+# ---------- Forzar carga del modelo al iniciar ----------
+if core.tokenizer is None or core.model is None:
+    print("🧠 Cargando modelo en Gradio (no vía FastAPI)...")
+    core.load_model()
+
+
 # ---------- Función de inferencia ----------
 def run_inference(input_text: str):
     if not input_text.strip():
