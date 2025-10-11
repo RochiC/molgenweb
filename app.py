@@ -11,40 +11,38 @@ if core.tokenizer is None or core.model is None:
 # ---------- Función de inferencia ----------
 def run_inference(input_text: str):
     if not input_text.strip():
-        return "Ingresá una configuración para generar el resultado."
+        return "Ingresá una o más líneas de SMILES."
 
     try:
-        # Tokenización e inferencia
-        inputs = core.tokenizer(input_text, return_tensors="pt").to(core.DEVICE)
-        with torch.no_grad():
-            outputs = core.model.generate(
-        inputs["input_ids"],
-        max_length=60,
-        do_sample=True,
-        top_k=40,
-        top_p=0.9,
-        temperature=0.7,
-        repetition_penalty=1.2,
-        eos_token_id=core.tokenizer.eos_token_id,
-        num_return_sequences=5  # 🔥 genera 5 SMILES distintos
-    )
+        # 1️⃣ Separar líneas del input
+        lines = [line.strip() for line in input_text.splitlines() if line.strip()]
 
-# Decodificamos todos los resultados generados
-        results = []
-        for i in range(len(outputs)):
-            tokens = core.tokenizer.convert_ids_to_tokens(outputs[i])
-        tokens_string = core.decodificar_tokens(tokens)
-        smiles = core.postprocesar_smiles(tokens_string)
-        results.append(smiles)
+        all_results = []
 
-# Los juntamos en un string separado por saltos de línea
-        return "\n".join(results)
+        # 2️⃣ Generar una molécula por cada línea ingresada
+        for line in lines:
+            inputs = core.tokenizer(line, return_tensors="pt").to(core.DEVICE)
 
+            with torch.no_grad():
+                outputs = core.model.generate(
+                    inputs["input_ids"],
+                    max_length=80,
+                    do_sample=True,
+                    top_k=50,
+                    top_p=0.85,
+                    temperature=0.65,
+                    repetition_penalty=1.25,
+                    eos_token_id=core.tokenizer.eos_token_id,
+                    num_return_sequences=1   # una sola por cada línea
+                )
 
-        tokens = core.tokenizer.convert_ids_to_tokens(outputs[0])
-        tokens_string = core.decodificar_tokens(tokens)
-        smiles = core.postprocesar_smiles(tokens_string)
-        return smiles
+            tokens = core.tokenizer.convert_ids_to_tokens(outputs[0])
+            tokens_string = core.decodificar_tokens(tokens)
+            smiles = core.postprocesar_smiles(tokens_string)
+            all_results.append(smiles)
+
+        # 3️⃣ Unir resultados con saltos de línea
+        return "\n".join(all_results)
 
     except Exception as e:
         return f"Error: {str(e)}"
