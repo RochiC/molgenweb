@@ -20,13 +20,25 @@ def run_inference(input_text: str):
             outputs = core.model.generate(
         inputs["input_ids"],
         max_length=60,
-        do_sample=True,          # activa muestreo aleatorio
-        top_k=40,                # elige entre los 40 tokens más probables
-        top_p=0.9,               # nucleus sampling
-        temperature=0.7,         # menos aleatorio, más coherente
-        repetition_penalty=1.2,  # evita repeticiones
-        eos_token_id=core.tokenizer.eos_token_id  # fin de secuencia
+        do_sample=True,
+        top_k=40,
+        top_p=0.9,
+        temperature=0.7,
+        repetition_penalty=1.2,
+        eos_token_id=core.tokenizer.eos_token_id,
+        num_return_sequences=5  # 🔥 genera 5 SMILES distintos
     )
+
+# Decodificamos todos los resultados generados
+        results = []
+        for i in range(len(outputs)):
+            tokens = core.tokenizer.convert_ids_to_tokens(outputs[i])
+        tokens_string = core.decodificar_tokens(tokens)
+        smiles = core.postprocesar_smiles(tokens_string)
+        results.append(smiles)
+
+# Los juntamos en un string separado por saltos de línea
+        return "\n".join(results)
 
 
         tokens = core.tokenizer.convert_ids_to_tokens(outputs[0])
