@@ -17,7 +17,17 @@ def run_inference(input_text: str):
         # Tokenización e inferencia
         inputs = core.tokenizer(input_text, return_tensors="pt").to(core.DEVICE)
         with torch.no_grad():
-            outputs = core.model.generate(inputs["input_ids"], max_length=60)
+            outputs = core.model.generate(
+        inputs["input_ids"],
+        max_length=60,
+        do_sample=True,          # activa muestreo aleatorio
+        top_k=40,                # elige entre los 40 tokens más probables
+        top_p=0.9,               # nucleus sampling
+        temperature=0.7,         # menos aleatorio, más coherente
+        repetition_penalty=1.2,  # evita repeticiones
+        eos_token_id=core.tokenizer.eos_token_id  # fin de secuencia
+    )
+
 
         tokens = core.tokenizer.convert_ids_to_tokens(outputs[0])
         tokens_string = core.decodificar_tokens(tokens)
