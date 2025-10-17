@@ -105,7 +105,6 @@ def generate(req: GenerateRequest):
 
     try:
         inputs = tokenizer(req.input_text, return_tensors="pt").to(DEVICE)
-
         # Preferimos el token [EOS] si existe, si no el por defecto del tokenizer
         eos_id = tokenizer.convert_tokens_to_ids("[EOS]")
         if eos_id is None or eos_id == tokenizer.unk_token_id:
@@ -125,6 +124,7 @@ def generate(req: GenerateRequest):
         tokens = tokenizer.convert_ids_to_tokens(outputs[0])
         tokens_string = decodificar_tokens(tokens)
         smiles = postprocesar_smiles(tokens_string)
+        smiles_final = smiles.replace("Ring", "")
 
         return GenerateResponse(
             raw_tokens_string=tokens_string,
