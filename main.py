@@ -16,16 +16,21 @@ SPECIAL_TOKENS = {"[CLS]", "[SEP]", "[PAD]", "[UNK]", "[BOS]", "[EOS]", "[MASK]"
 # ---------- Modelo global (cargado una vez) ----------
 tokenizer = None
 model = None
+model_loaded = False
 
 @app.on_event("startup")
 def load_model():
-    global tokenizer, model
+    global tokenizer, model, model_loaded
     try:
+        print(f"Cargando modelo {MODEL_NAME}...")
         tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
         model = AutoModelForCausalLM.from_pretrained(MODEL_NAME)
         model.to(DEVICE)
         model.eval()
+        model_loaded = True
+        print(f"Modelo cargado exitosamente en {DEVICE}")
     except Exception as e:
+        print(f"Error cargando modelo: {e}")
         raise RuntimeError(f"No se pudo cargar el modelo '{MODEL_NAME}': {e}")
 
 # ---------- Utilidades de decodificación/postpro ----------
@@ -96,12 +101,20 @@ class GenerateResponse(BaseModel):
 # ---------- Rutas ----------
 @app.get("/health")
 def health():
-    return {"status": "ok", "device": DEVICE, "model": MODEL_NAME}
+    return {
+        "status": "ok", 
+        "device": DEVICE, 
+        "model": MODEL_NAME,
+        "model_loaded": model_loaded
+    }
 
 @app.post("/generate", response_model=GenerateResponse)
 def generate(req: GenerateRequest):
-    if tokenizer is None or model is None:
-        raise HTTPException(status_code=500, detail="Modelo no inicializado")
+    if not model_loaded or tokenizer is None or model is None:
+        raise HTTPException(
+            status_code=503, 
+            detail="Modelo aún inicializando. Intente nuevamente en unos segundos."
+        )
 
     try:
         inputs = tokenizer(req.input_text, return_tensors="pt").to(DEVICE)

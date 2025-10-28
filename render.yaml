@@ -5,11 +5,14 @@ services:
     env: python
     plan: free
     region: oregon
-    buildCommand: pip install --upgrade pip && pip install --only-binary :all: -r requirements.txt && python -c "from transformers import AutoTokenizer, AutoModelForCausalLM; AutoTokenizer.from_pretrained('ncfrey/ChemGPT-4.7M'); AutoModelForCausalLM.from_pretrained('ncfrey/ChemGPT-4.7M')"
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt && python -c "from transformers import AutoTokenizer, AutoModelForCausalLM; AutoTokenizer.from_pretrained('ncfrey/ChemGPT-4.7M'); AutoModelForCausalLM.from_pretrained('ncfrey/ChemGPT-4.7M')"
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --timeout-keep-alive 120
     healthCheckPath: /health
+    autoDeploy: true
     envVars:
       - key: MODEL_NAME
         value: ncfrey/ChemGPT-4.7M
       - key: PYTHON_VERSION
         value: "3.12.7"
+      - key: TRANSFORMERS_CACHE
+        value: /opt/render/project/.cache/huggingface
