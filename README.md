@@ -2,7 +2,7 @@
 
 Una API REST construida con FastAPI para generar moléculas SMILES usando el modelo ChemGPT-4.7M de Hugging Face.
 
-api api api
+
 ## 🚀 Instalación y Configuración
 
 ### 1. Crear y activar entorno virtual
