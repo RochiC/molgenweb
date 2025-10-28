@@ -1,14 +1,10 @@
---extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.3.1          # wheel CPU estable y liviana
+torch==2.5.1
 transformers==4.46.3
-tokenizers==0.20.1    # wheel precompilada (evita compilar Rust)
+tokenizers==0.20.1
 safetensors==0.4.5
-huggingface_hub==0.24.6
+huggingface_hub==0.26.2
 
 fastapi==0.115.2
-uvicorn[standard]==0.30.6
-pydantic==2.7.4
+uvicorn[standard]==0.32.1
+pydantic==2.10.3
 python-dotenv==1.0.1
-httpx==0.28.1         # si lo usás
-pytest==8.4.2
-pytest-asyncio==1.2.0
