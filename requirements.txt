@@ -1,6 +1,6 @@
 torch==2.5.1
 transformers==4.46.3
-tokenizers==0.20.1
+tokenizers==0.19.1
 safetensors==0.4.5
 huggingface_hub==0.26.2
 
