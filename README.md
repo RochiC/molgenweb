@@ -42,7 +42,7 @@ pip install -r requirements.txt
 ### 3. Iniciar el servidor
 
 ```powershell
-python -m uvicorn script:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 **Parámetros del servidor:**
@@ -152,9 +152,10 @@ export MODEL_NAME=ncfrey/ChemGPT-4.7M
 ### Estructura del proyecto
 
 ```
-├── script.py           # Aplicación principal FastAPI
-├── requirements.txt    # Dependencias de Python
+├── main.py            # Aplicación principal FastAPI
+├── requirements.txt   # Dependencias de Python
 ├── README.md          # Este archivo
+├── render.yaml        # Configuración para deploy en Render
 └── venv/              # Entorno virtual (después de crear)
 ```
 
@@ -168,16 +169,16 @@ pip list
 pip freeze > requirements.txt
 
 # Ejecutar en producción (sin --reload)
-python -m uvicorn script:app --host 0.0.0.0 --port 8000
+python -m uvicorn main:app --host 0.0.0.0 --port 8000
 
 # Ejecutar en un puerto diferente
-python -m uvicorn script:app --reload --port 8080
+python -m uvicorn main:app --reload --port 8080
 ```
 
 ## 🐛 Solución de problemas
 
-### Error: "Could not import module 'script'"
-- Asegúrate de estar en el directorio correcto donde está `script.py`
+### Error: "Could not import module 'main'"
+- Asegúrate de estar en el directorio correcto donde está `main.py`
 - Verifica que el entorno virtual esté activado
 
 ### Error de memoria
