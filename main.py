@@ -12,7 +12,8 @@ app = FastAPI(title="Chem SMILES Generator", version="1.0.0")
 # Configuración de CORS
 origins = [
     "http://localhost:3000",
-    "https://mol-gen-ai.vercel.app"
+    "https://mol-gen-ai.vercel.app",
+    "https://molgenweb-ynuo.onrender.com"
 ]
 
 app.add_middleware(
@@ -27,6 +28,10 @@ app.add_middleware(
 MODEL_NAME = os.getenv("MODEL_NAME", "ncfrey/ChemGPT-4.7M")
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 SPECIAL_TOKENS = {"[CLS]", "[SEP]", "[PAD]", "[UNK]", "[BOS]", "[EOS]", "[MASK]"}
+
+# Validación adicional
+MIN_LENGTH = 10
+MAX_LENGTH = 100
 
 # ---------- Modelo global (cargado una vez) ----------
 tokenizer = None
@@ -109,6 +114,30 @@ class GenerateRequest(BaseModel):
     top_p: Optional[float] = 0.95
     temperature: Optional[float] = 1.0
 
+    class Config:
+        schema_extra = {
+            "example": {
+                "input_text": "Generate a molecule similar to aspirin",
+                "max_length": 60,
+                "top_k": 50,
+                "top_p": 0.95,
+                "temperature": 1.0
+            }
+        }
+
+    def validate_params(self):
+        if not self.input_text or len(self.input_text.strip()) == 0:
+            raise HTTPException(status_code=422, detail="input_text cannot be empty")
+        if self.max_length < MIN_LENGTH or self.max_length > MAX_LENGTH:
+            raise HTTPException(status_code=422, 
+                detail=f"max_length must be between {MIN_LENGTH} and {MAX_LENGTH}")
+        if self.top_k < 1:
+            raise HTTPException(status_code=422, detail="top_k must be greater than 0")
+        if self.top_p <= 0 or self.top_p > 1:
+            raise HTTPException(status_code=422, detail="top_p must be between 0 and 1")
+        if self.temperature <= 0:
+            raise HTTPException(status_code=422, detail="temperature must be greater than 0")
+
 class GenerateResponse(BaseModel):
     raw_tokens_string: str
     smiles_postprocesado: str
@@ -132,6 +161,7 @@ def generate(req: GenerateRequest):
         )
 
     try:
+        req.validate_params()
         inputs = tokenizer(req.input_text, return_tensors="pt").to(DEVICE)
 
         # Preferimos el token [EOS] si existe, si no el por defecto del tokenizer
