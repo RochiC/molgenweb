@@ -141,16 +141,50 @@ class GenerateRequest(BaseModel):
 
     def validate_params(self):
         if not self.input_text or len(self.input_text.strip()) == 0:
-            raise HTTPException(status_code=422, detail="input_text cannot be empty")
+            raise HTTPException(
+                status_code=422, 
+                detail={
+                    "error": "Validation Error",
+                    "message": "input_text cannot be empty",
+                    "field": "input_text"
+                }
+            )
         if self.max_length < MIN_LENGTH or self.max_length > MAX_LENGTH:
-            raise HTTPException(status_code=422, 
-                detail=f"max_length must be between {MIN_LENGTH} and {MAX_LENGTH}")
+            raise HTTPException(
+                status_code=422, 
+                detail={
+                    "error": "Validation Error",
+                    "message": f"max_length must be between {MIN_LENGTH} and {MAX_LENGTH}",
+                    "field": "max_length"
+                }
+            )
         if self.top_k < 1:
-            raise HTTPException(status_code=422, detail="top_k must be greater than 0")
+            raise HTTPException(
+                status_code=422, 
+                detail={
+                    "error": "Validation Error",
+                    "message": "top_k must be greater than 0",
+                    "field": "top_k"
+                }
+            )
         if self.top_p <= 0 or self.top_p > 1:
-            raise HTTPException(status_code=422, detail="top_p must be between 0 and 1")
+            raise HTTPException(
+                status_code=422, 
+                detail={
+                    "error": "Validation Error",
+                    "message": "top_p must be between 0 and 1",
+                    "field": "top_p"
+                }
+            )
         if self.temperature <= 0:
-            raise HTTPException(status_code=422, detail="temperature must be greater than 0")
+            raise HTTPException(
+                status_code=422, 
+                detail={
+                    "error": "Validation Error",
+                    "message": "temperature must be greater than 0",
+                    "field": "temperature"
+                }
+            )
 
 class GenerateResponse(BaseModel):
     raw_tokens_string: str
@@ -168,22 +202,37 @@ def health():
 
 @app.post("/generate", response_model=GenerateResponse)
 async def generate(req: GenerateRequest):
-    # Add CORS headers explicitly
     headers = {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "POST, OPTIONS",
         "Access-Control-Allow-Headers": "*",
+        "Content-Type": "application/json"
     }
     
-    if not model_loaded or tokenizer is None or model is None:
-        raise HTTPException(
-            status_code=503, 
-            detail="Modelo aún inicializando. Intente nuevamente en unos segundos.",
-            headers=headers
-        )
-
     try:
+        # Validate request body first
+        if not isinstance(req, GenerateRequest):
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "Invalid Request",
+                    "message": "Invalid request format"
+                },
+                headers=headers
+            )
+            
         req.validate_params()
+        
+        if not model_loaded or tokenizer is None or model is None:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": "Service Unavailable",
+                    "message": "Modelo aún inicializando. Intente nuevamente en unos segundos."
+                },
+                headers=headers
+            )
+
         inputs = tokenizer(req.input_text, return_tensors="pt").to(DEVICE)
 
         # Preferimos el token [EOS] si existe, si no el por defecto del tokenizer
@@ -210,11 +259,25 @@ async def generate(req: GenerateRequest):
             raw_tokens_string=tokens_string,
             smiles_postprocesado=smiles
         )
-    except Exception as e:
-        print(f"Error en generate: {str(e)}")  # Add logging
+
+    except ValidationError as ve:
+        print(f"Validation error: {str(ve)}")
         raise HTTPException(
-            status_code=500, 
-            detail=f"Error generando SMILES: {str(e)}",
+            status_code=422,
+            detail={
+                "error": "Validation Error",
+                "message": str(ve)
+            },
+            headers=headers
+        )
+    except Exception as e:
+        print(f"Error en generate: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "Internal Server Error",
+                "message": f"Error generando SMILES: {str(e)}"
+            },
             headers=headers
         )
 
