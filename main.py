@@ -3,10 +3,25 @@ import re
 import torch
 from typing import Optional
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
 app = FastAPI(title="Chem SMILES Generator", version="1.0.0")
+
+# Configuración de CORS
+origins = [
+    "http://localhost:3000",
+    "https://mol-gen-ai.vercel.app"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ---------- Config ----------
 MODEL_NAME = os.getenv("MODEL_NAME", "ncfrey/ChemGPT-4.7M")
