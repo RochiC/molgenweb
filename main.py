@@ -12,17 +12,31 @@ app = FastAPI(title="Chem SMILES Generator", version="1.0.0")
 # Configuración de CORS
 origins = [
     "http://localhost:3000",
+    "http://localhost:5173",
     "https://mol-gen-ai.vercel.app",
-    "https://molgenweb-ynuo.onrender.com"
+    "https://molgenweb-ynuo.onrender.com",
+    "https://www.mol-gen-ai.vercel.app",
+    "*"  # Temporarily allow all origins in development
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
 )
+
+# Add logging middleware
+@app.middleware("http")
+async def log_requests(request, call_next):
+    print(f"Request: {request.method} {request.url}")
+    print(f"Headers: {request.headers}")
+    response = await call_next(request)
+    print(f"Response status: {response.status_code}")
+    return response
 
 # ---------- Config ----------
 MODEL_NAME = os.getenv("MODEL_NAME", "ncfrey/ChemGPT-4.7M")
@@ -153,11 +167,19 @@ def health():
     }
 
 @app.post("/generate", response_model=GenerateResponse)
-def generate(req: GenerateRequest):
+async def generate(req: GenerateRequest):
+    # Add CORS headers explicitly
+    headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "*",
+    }
+    
     if not model_loaded or tokenizer is None or model is None:
         raise HTTPException(
             status_code=503, 
-            detail="Modelo aún inicializando. Intente nuevamente en unos segundos."
+            detail="Modelo aún inicializando. Intente nuevamente en unos segundos.",
+            headers=headers
         )
 
     try:
@@ -189,4 +211,14 @@ def generate(req: GenerateRequest):
             smiles_postprocesado=smiles
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generando SMILES: {str(e)}")
+        print(f"Error en generate: {str(e)}")  # Add logging
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Error generando SMILES: {str(e)}",
+            headers=headers
+        )
+
+# Add OPTIONS endpoint
+@app.options("/generate")
+async def generate_options():
+    return {"message": "OK"}
