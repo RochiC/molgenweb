@@ -4,12 +4,12 @@ import torch
 from typing import Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
 app = FastAPI(title="Chem SMILES Generator", version="1.0.0")
 
-# Configuración de CORS
+# =========== CONFIGURACIÓN DE CORS ===========
 origins = [
     "http://localhost:3000",
     "http://localhost:5173",
@@ -29,7 +29,7 @@ app.add_middleware(
     max_age=3600,
 )
 
-# Add logging middleware
+# =========== LOGGING MIDDLEWARE ===========
 @app.middleware("http")
 async def log_requests(request, call_next):
     print(f"Request: {request.method} {request.url}")
@@ -38,16 +38,15 @@ async def log_requests(request, call_next):
     print(f"Response status: {response.status_code}")
     return response
 
-# ---------- Config ----------
+# =========== CONFIG IA Y TOKENS ===========
 MODEL_NAME = os.getenv("MODEL_NAME", "ncfrey/ChemGPT-4.7M")
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 SPECIAL_TOKENS = {"[CLS]", "[SEP]", "[PAD]", "[UNK]", "[BOS]", "[EOS]", "[MASK]"}
 
-# Validación adicional
 MIN_LENGTH = 10
 MAX_LENGTH = 100
 
-# ---------- Modelo global (cargado una vez) ----------
+# =========== MODELO GLOBAL ==============
 tokenizer = None
 model = None
 model_loaded = False
@@ -67,14 +66,16 @@ def load_model():
         print(f"Error cargando modelo: {e}")
         raise RuntimeError(f"No se pudo cargar el modelo '{MODEL_NAME}': {e}")
 
-# ---------- Utilidades de decodificación/postpro ----------
+# ============= IA PROFESIONAL ==============
 def decodificar_tokens(tokens):
     mol = []
     for tok in tokens:
         if tok in SPECIAL_TOKENS:
             continue
+        # Chau corchetes solo de tokens especiales que no sean químicos tipo [C], [O], [N].
         if tok.startswith("[") and tok.endswith("]"):
             contenido = tok[1:-1]
+            # Si el contenido es químico o token interno (Ring/Branch) lo mantiene o procesa
             if re.match(r'^[A-Za-z0-9@=#+\\/-]+$', contenido):
                 mol.append(contenido)
             else:
@@ -83,7 +84,25 @@ def decodificar_tokens(tokens):
             mol.append(tok)
     return "".join(mol)
 
-def postprocesar_smiles(tokens_string: str) -> str:
+def generar_smiles(input_text, max_length=60, top_k=50, top_p=0.95, temperature=1.0):
+    global tokenizer, model
+    if tokenizer is None or model is None:
+        raise RuntimeError("Modelo no cargado")
+    inputs = tokenizer(input_text, return_tensors="pt").to(DEVICE)
+    outputs = model.generate(
+        inputs['input_ids'],
+        max_length=max_length,
+        do_sample=True,
+        top_k=top_k,
+        top_p=top_p,
+        temperature=temperature,
+        eos_token_id=tokenizer.convert_tokens_to_ids("[EOS]") or tokenizer.eos_token_id,
+    )
+    tokens = tokenizer.convert_ids_to_tokens(outputs[0])
+    tokens_string = decodificar_tokens(tokens)
+    return tokens_string
+
+def postprocesar_smiles(tokens_string):
     pattern = re.compile(r'\[.*?\]')
     tokens = pattern.split(tokens_string)
     matches = pattern.findall(tokens_string)
@@ -94,33 +113,30 @@ def postprocesar_smiles(tokens_string: str) -> str:
 
     for i in range(len(tokens)):
         result.append(tokens[i])
-
-        if i < len(matches):
+    if i < len(matches):
             tok = matches[i]
-
+            # Branch -> (
             if tok.startswith("[Branch"):
                 result.append("(")
                 branch_stack.append(")")
-
+            # Ring -> manejar apertura/cierre
             elif tok.startswith("Ring"):
-                nums = re.findall(r'\d+', tok)
-                if nums:
-                    n = nums[0]
+                num = re.findall(r'\d+', tok)
+                if num:
+                    n = num[0]
                     if n not in ring_open:
                         ring_open[n] = True
                     else:
                         del ring_open[n]
                     result.append(n)
-
+            # Otros tokens (por seguridad)
             else:
                 result.append(tok)
+            while branch_stack:
+                result.append(branch_stack.pop())
+            return "".join(result)
 
-    while branch_stack:
-        result.append(branch_stack.pop())
-
-    return "".join(result)
-
-# ---------- Tipos de request/response ----------
+# ============ REQUEST/RESPONSE TYPES ============
 class GenerateRequest(BaseModel):
     input_text: str
     max_length: Optional[int] = 60
@@ -142,7 +158,7 @@ class GenerateRequest(BaseModel):
     def validate_params(self):
         if not self.input_text or len(self.input_text.strip()) == 0:
             raise HTTPException(
-                status_code=422, 
+                status_code=422,
                 detail={
                     "error": "Validation Error",
                     "message": "input_text cannot be empty",
@@ -151,7 +167,7 @@ class GenerateRequest(BaseModel):
             )
         if self.max_length < MIN_LENGTH or self.max_length > MAX_LENGTH:
             raise HTTPException(
-                status_code=422, 
+                status_code=422,
                 detail={
                     "error": "Validation Error",
                     "message": f"max_length must be between {MIN_LENGTH} and {MAX_LENGTH}",
@@ -160,7 +176,7 @@ class GenerateRequest(BaseModel):
             )
         if self.top_k < 1:
             raise HTTPException(
-                status_code=422, 
+                status_code=422,
                 detail={
                     "error": "Validation Error",
                     "message": "top_k must be greater than 0",
@@ -169,7 +185,7 @@ class GenerateRequest(BaseModel):
             )
         if self.top_p <= 0 or self.top_p > 1:
             raise HTTPException(
-                status_code=422, 
+                status_code=422,
                 detail={
                     "error": "Validation Error",
                     "message": "top_p must be between 0 and 1",
@@ -178,7 +194,7 @@ class GenerateRequest(BaseModel):
             )
         if self.temperature <= 0:
             raise HTTPException(
-                status_code=422, 
+                status_code=422,
                 detail={
                     "error": "Validation Error",
                     "message": "temperature must be greater than 0",
@@ -190,12 +206,12 @@ class GenerateResponse(BaseModel):
     raw_tokens_string: str
     smiles_postprocesado: str
 
-# ---------- Rutas ----------
+# ============= ENDPOINTS =============
 @app.get("/health")
 def health():
     return {
-        "status": "ok", 
-        "device": DEVICE, 
+        "status": "ok",
+        "device": DEVICE,
         "model": MODEL_NAME,
         "model_loaded": model_loaded
     }
@@ -208,7 +224,6 @@ async def generate(req: GenerateRequest):
         "Access-Control-Allow-Headers": "*",
         "Content-Type": "application/json"
     }
-    
     try:
         # Validate request body first
         if not isinstance(req, GenerateRequest):
@@ -220,9 +235,9 @@ async def generate(req: GenerateRequest):
                 },
                 headers=headers
             )
-            
+
         req.validate_params()
-        
+
         if not model_loaded or tokenizer is None or model is None:
             raise HTTPException(
                 status_code=503,
@@ -233,28 +248,14 @@ async def generate(req: GenerateRequest):
                 headers=headers
             )
 
-        inputs = tokenizer(req.input_text, return_tensors="pt").to(DEVICE)
-
-        # Preferimos el token [EOS] si existe, si no el por defecto del tokenizer
-        eos_id = tokenizer.convert_tokens_to_ids("[EOS]")
-        if eos_id is None or eos_id == tokenizer.unk_token_id:
-            eos_id = tokenizer.eos_token_id
-
-        with torch.no_grad():
-            outputs = model.generate(
-                inputs["input_ids"],
-                max_length=req.max_length,
-                do_sample=True,
-                top_k=req.top_k,
-                top_p=req.top_p,
-                temperature=req.temperature,
-                eos_token_id=eos_id,
-            )
-
-        tokens = tokenizer.convert_ids_to_tokens(outputs[0])
-        tokens_string = decodificar_tokens(tokens)
+        tokens_string = generar_smiles(
+            req.input_text,
+            req.max_length,
+            req.top_k,
+            req.top_p,
+            req.temperature
+        )
         smiles = postprocesar_smiles(tokens_string)
-
         return GenerateResponse(
             raw_tokens_string=tokens_string,
             smiles_postprocesado=smiles
@@ -281,7 +282,7 @@ async def generate(req: GenerateRequest):
             headers=headers
         )
 
-# Add OPTIONS endpoint
+# OPTIONS endpoint
 @app.options("/generate")
 async def generate_options():
     return {"message": "OK"}
