@@ -113,7 +113,7 @@ def postprocesar_smiles(tokens_string):
 
     for i in range(len(tokens)):
         result.append(tokens[i])
-    if i < len(matches):
+        if i < len(matches):
             tok = matches[i]
             # Branch -> (
             if tok.startswith("[Branch"):
@@ -132,9 +132,9 @@ def postprocesar_smiles(tokens_string):
             # Otros tokens (por seguridad)
             else:
                 result.append(tok)
-            while branch_stack:
-                result.append(branch_stack.pop())
-            return "".join(result)
+    while branch_stack:
+        result.append(branch_stack.pop())
+    return "".join(result)
 
 # ============ REQUEST/RESPONSE TYPES ============
 class GenerateRequest(BaseModel):
