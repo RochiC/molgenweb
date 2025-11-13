@@ -155,8 +155,9 @@ class GenerateRequest(BaseModel):
             }
         }
 
-def validate_params(self):
-    if not self.input_text or len(self.input_text.strip()) == 0:
+# 🚩 Esta función va afuera de la clase, usa un parámetro "req" de tipo GenerateRequest
+def validate_generate_request(req: GenerateRequest):
+    if not req.input_text or len(req.input_text.strip()) == 0:
         raise HTTPException(
             status_code=422,
             detail={
@@ -165,9 +166,8 @@ def validate_params(self):
                 "field": "input_text"
             }
         )
-    # 💡 FILTRO SMILES debe ir *aquí*, fuera de cualquier if anterior
     smiles_regex = re.compile(r'^[A-Za-z0-9@+\-=#%\/()\[\]\.\*]+$')
-    if not smiles_regex.match(self.input_text):
+    if not smiles_regex.match(req.input_text):
         raise HTTPException(
             status_code=422,
             detail={
@@ -176,48 +176,42 @@ def validate_params(self):
                 "field": "input_text"
             }
         )
-    # ... sigue el resto
-    if self.max_length < MIN_LENGTH or self.max_length > MAX_LENGTH:
-        ...
-    # etc
-
-            
-        if self.max_length < MIN_LENGTH or self.max_length > MAX_LENGTH:
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "error": "Validation Error",
-                    "message": f"max_length must be between {MIN_LENGTH} and {MAX_LENGTH}",
-                    "field": "max_length"
-                }
-            )
-        if self.top_k < 1:
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "error": "Validation Error",
-                    "message": "top_k must be greater than 0",
-                    "field": "top_k"
-                }
-            )
-        if self.top_p <= 0 or self.top_p > 1:
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "error": "Validation Error",
-                    "message": "top_p must be between 0 and 1",
-                    "field": "top_p"
-                }
-            )
-        if self.temperature <= 0:
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "error": "Validation Error",
-                    "message": "temperature must be greater than 0",
-                    "field": "temperature"
-                }
-            )
+    if req.max_length < MIN_LENGTH or req.max_length > MAX_LENGTH:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "Validation Error",
+                "message": f"max_length must be between {MIN_LENGTH} and {MAX_LENGTH}",
+                "field": "max_length"
+            }
+        )
+    if req.top_k < 1:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "Validation Error",
+                "message": "top_k must be greater than 0",
+                "field": "top_k"
+            }
+        )
+    if req.top_p <= 0 or req.top_p > 1:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "Validation Error",
+                "message": "top_p must be between 0 and 1",
+                "field": "top_p"
+            }
+        )
+    if req.temperature <= 0:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "Validation Error",
+                "message": "temperature must be greater than 0",
+                "field": "temperature"
+            }
+        )
 
 class GenerateResponse(BaseModel):
     raw_tokens_string: str
@@ -253,7 +247,7 @@ async def generate(req: GenerateRequest):
                 headers=headers
             )
 
-        req.validate_params()
+        validate_generate_request(req)
 
         if not model_loaded or tokenizer is None or model is None:
             raise HTTPException(
