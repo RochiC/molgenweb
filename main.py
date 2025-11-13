@@ -166,7 +166,8 @@ def validate_generate_request(req: GenerateRequest):
                 "field": "input_text"
             }
         )
-    smiles_regex = re.compile(r'^[A-Za-z0-9@+\-=#%\/()\[\]\.\*]+$')
+    # Regex MEJORADA
+    smiles_regex = re.compile(r'^([BCNOPSFHIbcnops@+\-=#%/\[\]\(\)\*0-9\.]+)$')
     if not smiles_regex.match(req.input_text):
         raise HTTPException(
             status_code=422,
@@ -176,6 +177,8 @@ def validate_generate_request(req: GenerateRequest):
                 "field": "input_text"
             }
         )
+    # ... el resto igual
+
     if req.max_length < MIN_LENGTH or req.max_length > MAX_LENGTH:
         raise HTTPException(
             status_code=422,
