@@ -155,20 +155,20 @@ class GenerateRequest(BaseModel):
             }
         }
 
-    def validate_params(self):
-        if not self.input_text or len(self.input_text.strip()) == 0:
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "error": "Validation Error",
-                    "message": "input_text cannot be empty",
-                    "field": "input_text"
-                }
-            )
-            # FILTRADO DE SMILES BÁSICO
-        smiles_regex = re.compile(r'^[A-Za-z0-9@+\-=#%\\/()\[\]\.\*]+$')
-        if not smiles_regex.match(self.input_text):
-            raise HTTPException(
+def validate_params(self):
+    if not self.input_text or len(self.input_text.strip()) == 0:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "Validation Error",
+                "message": "input_text cannot be empty",
+                "field": "input_text"
+            }
+        )
+    # 💡 FILTRO SMILES debe ir *aquí*, fuera de cualquier if anterior
+    smiles_regex = re.compile(r'^[A-Za-z0-9@+\-=#%\\/()\[\]\.\*]+$')
+    if not smiles_regex.match(self.input_text):
+        raise HTTPException(
             status_code=422,
             detail={
                 "error": "Validation Error",
@@ -176,6 +176,11 @@ class GenerateRequest(BaseModel):
                 "field": "input_text"
             }
         )
+    # ... sigue el resto
+    if self.max_length < MIN_LENGTH or self.max_length > MAX_LENGTH:
+        ...
+    # etc
+
             
         if self.max_length < MIN_LENGTH or self.max_length > MAX_LENGTH:
             raise HTTPException(
