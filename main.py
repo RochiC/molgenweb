@@ -165,6 +165,18 @@ class GenerateRequest(BaseModel):
                     "field": "input_text"
                 }
             )
+            # FILTRADO DE SMILES BÁSICO
+        smiles_regex = re.compile(r'^[A-Za-z0-9@+\-=#%\\/()\[\]\.\*]+$')
+        if not smiles_regex.match(self.input_text):
+            raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "Validation Error",
+                "message": "Solo se permiten moléculas en formato SMILES (ej: CCO, C1CCCCC1, CC(=O)O, etc).",
+                "field": "input_text"
+            }
+        )
+            
         if self.max_length < MIN_LENGTH or self.max_length > MAX_LENGTH:
             raise HTTPException(
                 status_code=422,
