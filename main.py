@@ -181,13 +181,13 @@ def validate_generate_request(req: GenerateRequest):
 
     if req.max_length < MIN_LENGTH or req.max_length > MAX_LENGTH:
         raise HTTPException(
-    status_code=422,
-    detail={
-        "error": "Validation Error",
-        "message": "Debes ingresar una molécula válida en formato SMILES. Ejemplo: CCO, CCCOCC, C1=CC=CC=C1",
-        "field": "input_text"
-    }
-)
+            status_code=422,
+            detail={
+                "error": "Validation Error",
+                "message": f"max_length must be between {MIN_LENGTH} and {MAX_LENGTH}",
+                "field": "max_length"
+            }
+        )
     if req.top_k < 1:
         raise HTTPException(
             status_code=422,
