@@ -166,7 +166,7 @@ def validate_params(self):
             }
         )
     # 💡 FILTRO SMILES debe ir *aquí*, fuera de cualquier if anterior
-    smiles_regex = re.compile(r'^[A-Za-z0-9@+\-=#%\\/()\[\]\.\*]+$')
+    smiles_regex = re.compile(r'^[A-Za-z0-9@+\-=#%\/()\[\]\.\*]+$')
     if not smiles_regex.match(self.input_text):
         raise HTTPException(
             status_code=422,
